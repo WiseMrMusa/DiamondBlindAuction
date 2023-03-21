@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "../contracts/interfaces/IDiamondCut.sol";
 import "../contracts/facets/DiamondCutFacet.sol";
+import "./NFTContract.sol";
 import "../contracts/facets/DiamondLoupeFacet.sol";
 import "../contracts/facets/OwnershipFacet.sol";
 import "../../lib/forge-std/src/Test.sol";
@@ -17,7 +18,7 @@ contract DiamondDeployer is Test, IDiamondCut {
     DiamondLoupeFacet dLoupe;
     OwnershipFacet ownerF;
     TestFacet thisFac;
-    // NFTContract public myNFT; 
+    NFTContract public myNFT; 
 
     function testDeployDiamond() public {
         //deploy facets
@@ -75,13 +76,59 @@ contract DiamondDeployer is Test, IDiamondCut {
         IDiamondCut(address(diamond)).diamondCut(cut, address(0x0), "");
     }
 
-    // function testAuctionNFT() public {
-    //     vm.startPrank(address(0x10));
-    //     myNFT = new NFTContract("","");
-    //     myNFT.safeMint(address(0x10),1);
-    //     myNFT.approve(address(blindNFTAuction),1);
-    //     vm.stopPrank();
-    // }
+    function testAuctionNFT() public {
+        testDeployTestFacet();
+        vm.startPrank(address(0x10));
+        myNFT = new NFTContract("","");
+        myNFT.safeMint(address(0x10),1);
+        myNFT.approve(address(diamond),1);
+        vm.stopPrank();
+        AuctionNFT();
+    }
+
+    function testPlaceBid() public {
+        testAuctionNFT();
+        placeBid(address(0x01), 0.08 ether);
+        placeBid(address(0x02), 0.09 ether);
+        placeBid(address(0x03), 0.10 ether);
+        placeBid(address(0x04), 29.9 ether);
+    }
+
+    function testEndBid() public {
+        testPlaceBid();
+        // blindNFTAuction.getHighestBidder(address(myNFT),1);
+        vm.prank(address(0x10));
+        ITestFacet(address(diamond)).endBid(address(myNFT),1);
+    }
+
+    function testMyBid() public {
+        testAuctionNFT();
+        placeBid(address(0x01), 0.08 ether);
+        ITestFacet(address(diamond)).myBidForNFT(address(myNFT),1);
+        placeBid(address(0x02), 0.09 ether);
+        ITestFacet(address(diamond)).myBidForNFT(address(myNFT),1);
+        placeBid(address(0x03), 0.10 ether);
+        ITestFacet(address(diamond)).myBidForNFT(address(myNFT),1);
+        placeBid(address(0x04), 29.9 ether);
+        ITestFacet(address(diamond)).myBidForNFT(address(myNFT),1);
+        // blindNFTAuction.getHighestBidder(address(myNFT),1);
+    }
+
+    function testWithDrawBid() public {
+        testEndBid();
+        vm.prank(address(0x02));
+        ITestFacet(address(diamond)).withdrawBid(address(myNFT),1);
+        vm.prank(address(0x03));
+        ITestFacet(address(diamond)).withdrawBid(address(myNFT),1);
+    }
+
+    function testFailWithDrawBid() public {
+        testEndBid();
+        vm.prank(address(0x02));
+        ITestFacet(address(diamond)).withdrawBid(address(myNFT),1);
+        vm.prank(address(0x02));
+        ITestFacet(address(diamond)).withdrawBid(address(myNFT),1);
+    }
 
 
 
@@ -95,6 +142,16 @@ contract DiamondDeployer is Test, IDiamondCut {
 
 
 
+    function AuctionNFT() public {
+        vm.prank(address(0x10));
+        ITestFacet(address(diamond)).AuctionNFT(address(myNFT),1,44950490459045);
+    }
+
+        function placeBid(address addr, uint256 bid) public {
+        vm.deal(addr,100 ether);
+        vm.prank(addr);
+        ITestFacet(address(diamond)).placeBid{value: bid}(address(myNFT),1);
+    }
 
     function generateSelectors(string memory _facetName)
         internal
