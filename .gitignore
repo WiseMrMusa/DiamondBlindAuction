@@ -2,3 +2,15 @@ out
 artifacts
 node_modules
 cache
+.env
+node_modules
+.env
+coverage
+coverage.json
+typechain
+typechain-types
+
+# Hardhat files
+cache
+artifacts
+
